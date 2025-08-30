@@ -1,114 +1,178 @@
+import axios from 'axios';
+import { Briefcase, CheckCircle, Code, FileText, LinkIcon, Plus } from 'lucide-react';
 import React, { useState } from 'react';
 import { Layout } from '../components/Layout';
-import { Calendar, FileText, Image, CheckCircle, Plus, X } from 'lucide-react';
-import { storageUtils } from '../utils/storage';
-import { Event } from '../types';
 
 export const AddEvent: React.FC = () => {
   const [formData, setFormData] = useState({
-    name: '',
-    category: '',
+    eventName: '',
+    category: 'other',
     images: [] as string[],
-    mainImage: '',
+    status: 'planned',
     description: '',
-    date: ''
+    eventDate: '',
+    publish:false,
+    clientName:'',
+    clientEmail:'',
+    clientPhone:'',
+    package:'',
+    budget:0,
+    advance:0,
+    advanceDate:'',
+    location:'',
+    
+    url:'',
+
+
+
   });
   const [newImageUrl, setNewImageUrl] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
-  const eventCategories = ['Corporate Events', 'Weddings', 'Product Launches', 'Social Events', 'Conferences'];
+  const eventCategories = ['live', 'wedding', 'celebrations', 'corparate','other'];
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const addImageUrl = () => {
-    if (newImageUrl.trim()) {
-      setFormData(prev => ({
-        ...prev,
-        images: [...prev.images, newImageUrl.trim()],
-        mainImage: prev.mainImage || newImageUrl.trim() // Set as main image if it's the first one
-      }));
-      setNewImageUrl('');
-    }
-  };
 
-  const removeImage = (index: number) => {
-    const imageToRemove = formData.images[index];
-    setFormData(prev => ({
-      ...prev,
-      images: prev.images.filter((_, i) => i !== index),
-      mainImage: prev.mainImage === imageToRemove ? (prev.images[0] || '') : prev.mainImage
-    }));
-  };
+  
+    const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setIsSubmitting(true);
 
-  const setAsMainImage = (imageUrl: string) => {
-    setFormData(prev => ({ ...prev, mainImage: imageUrl }));
-  };
+  try {
+    // Replace with your actual API endpoint
+    const payload = {
+      clientName: formData.clientName,
+      clientEmail: formData.clientEmail,
+      clientPhone: formData.clientPhone,
+      eventName: formData.eventName,
+      publish:formData.publish,
+      description: formData.description,
+      // technologies: formData.technologies,
+      images: formData.images,
+      url: formData.url,
+      budget:formData.budget,
+      category:formData.category,
+      status:formData.status,
+      eventLocation:formData.location,
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    const event: Event = {
-      id: Date.now().toString(),
-      ...formData,
-      createdAt: new Date().toISOString()
-    };
-
-    storageUtils.saveEvent(event);
+      
     
+      advance: Number(formData.advance),
+      advancePaymentDate: formData.advanceDate ? new Date(formData.advanceDate).toISOString() : null,
+      // fullPaymentDate: formData.fullPaymentDate ? new Date(formData.fullPaymentDate).toISOString() : null,
+      // extraFunctionalities: formData.extraFunctionalities,
+      // status: formData.status,
+      // notes: formData.notes
+    };
+    const response = await axios.post("https://primexbackend.onrender.com/api/events/addevent", payload);
+
+    console.log("Server Response:", response.data.success);
+    if(response.data.success==true){
     setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
+    }
+
+
+    // Optionally reset form after successful submission
     setFormData({
-      name: '',
-      category: '',
-      images: [],
-      mainImage: '',
-      description: '',
-      date: ''
-    });
+  eventName: '',
+  category: '',
+  images: [],   
+  status: 'planned',
+  description: '',
+  eventDate: '',
+  publish: false,
+  clientName: '',
+  clientEmail: '',
+  clientPhone: '',
+  package: '',
+  budget: 0,
+  advance: 0,
+  advanceDate: '',
+  url: '',
+  location:''
+});
+
+  } catch (error: any) {
+    console.error("Error submitting project:", error);
+    alert(
+      error.response?.data?.message || "Something went wrong. Please try again."
+    );
+  } finally {
     setIsSubmitting(false);
 
-    setTimeout(() => setShowSuccess(false), 3000);
-  };
+    // Hide success message after 3 seconds
+    
+  }
+};
+const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  if (!e.target.files) return;
 
-  const existingEvents = storageUtils.getEvents();
+  const files = Array.from(e.target.files);
+  const formdata = new FormData();
+
+  files.forEach((file) => formdata.append("images", file));
+
+  try {
+    const res = await fetch("https://primexbackend.onrender.com/api/events/upload", {
+      method: "POST",
+      body: formdata,
+    });
+
+    const data = await res.json();
+    if (data.success && data.urls) {
+      setFormData(prev => ({
+        ...prev,
+        images: [...prev.images, ...data.urls],
+      }));
+    } else {
+      console.error("Upload failed:", data.error);
+      alert("Image upload failed");
+    }
+  } catch (err) {
+    console.error("Error uploading images:", err);
+    alert("Error uploading images");
+  }
+};
+
+  // const existingEvents = storageUtils.getEvents();
 
   return (
-    <Layout>
-      <div className="max-w-4xl mx-auto space-y-8">
+     <Layout>
+      <div className="max-w-4xl mx-auto space-y-8 mb-20">
         {/* Header */}
         <div className="bg-white rounded-xl shadow-sm border border-red-100 p-6">
           <div className="flex items-center space-x-3 mb-2">
-            <div className="p-2 bg-green-100 rounded-lg">
-              <Calendar className="text-green-600" size={24} />
+            <div className="p-2 bg-red-100 rounded-lg">
+              <Briefcase className="text-red-600" size={24} />
             </div>
-            <h1 className="text-3xl font-bold text-gray-900">Events Coverage</h1>
+            <h1 className="text-3xl font-bold text-gray-900">Events</h1>
           </div>
-          <p className="text-gray-600">Document and showcase your event coverage</p>
-          <div className="mt-4 inline-flex items-center px-3 py-1 bg-green-50 text-green-700 rounded-full text-sm font-medium border border-green-200">
-            {existingEvents.length} Events Covered
-          </div>
+          <p className="text-gray-600">Add a new Event</p>
+          {/* <div className="mt-4 inline-flex items-center px-3 py-1 bg-red-50 text-red-700 rounded-full text-sm font-medium border border-red-200">
+            {existingProjects.length} Projects Added
+          </div> */}
         </div>
 
         {/* Success Message */}
-        {showSuccess && (
-          <div className="bg-green-50 border border-green-200 text-green-700 px-6 py-4 rounded-xl flex items-center space-x-3">
-            <CheckCircle size={20} />
-            <span className="font-medium">Event added successfully!</span>
-          </div>
-        )}
+       {showSuccess && (
+  <div className="fixed top-5 right-5 z-50 bg-green-50 border border-green-200 text-green-700 px-6 py-4 rounded-xl flex items-center space-x-3 shadow-lg animate-slide-in">
+    <CheckCircle size={20} />
+    <span className="font-medium">Event Added Successfully!</span>
+  </div>
+)}
 
-        {/* Add Event Form */}
+        {/* Add Project Form */}
         <div className="bg-white rounded-xl shadow-sm border border-red-100 p-8">
-          <h2 className="text-2xl font-semibold text-gray-900 mb-6">Add New Event</h2>
+          <h2 className="text-2xl font-semibold text-gray-900 mb-6">Event Details</h2>
           
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Event Name */}
+          <form onSubmit={handleSubmit} className="space-y-6 mb-44">
+            {/* Project Title */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Event Name *
@@ -117,116 +181,86 @@ export const AddEvent: React.FC = () => {
                 <FileText className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
                 <input
                   type="text"
-                  name="name"
-                  value={formData.name}
+                  name="eventName"
+                  value={formData.eventName}
                   onChange={handleInputChange}
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200"
-                  placeholder="Enter event name"
+                  placeholder="Enter project title"
                   required
                 />
               </div>
             </div>
 
-            {/* Category */}
+            {/* Project Link */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Event Category *
+                Event FaceBook Link *
               </label>
-              <select
-                name="category"
-                value={formData.category}
-                onChange={handleInputChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200"
-                required
-              >
-                <option value="">Select a category</option>
-                {eventCategories.map((category) => (
-                  <option key={category} value={category}>{category}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Date */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Event Date *
-              </label>
-              <input
-                type="date"
-                name="date"
-                value={formData.date}
-                onChange={handleInputChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200"
-                required
-              />
-            </div>
-
-            {/* Images */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Event Images
-              </label>
-              <div className="space-y-3">
-                <div className="flex space-x-2">
-                  <div className="relative flex-1">
-                    <Image className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-                    <input
-                      type="url"
-                      value={newImageUrl}
-                      onChange={(e) => setNewImageUrl(e.target.value)}
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200"
-                      placeholder="https://example.com/image.jpg"
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={addImageUrl}
-                    className="px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                  >
-                    <Plus size={18} />
-                  </button>
-                </div>
-
-                {formData.images.length > 0 && (
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
-                    {formData.images.map((imageUrl, index) => (
-                      <div key={index} className="relative group">
-                        <img 
-                          src={imageUrl} 
-                          alt={`Event image ${index + 1}`}
-                          className={`w-full h-24 object-cover rounded-lg border-2 ${
-                            formData.mainImage === imageUrl ? 'border-red-500' : 'border-gray-200'
-                          }`}
-                        />
-                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 rounded-lg transition-all duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100">
-                          <div className="flex space-x-2">
-                            <button
-                              type="button"
-                              onClick={() => setAsMainImage(imageUrl)}
-                              className="px-2 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700"
-                            >
-                              Main
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => removeImage(index)}
-                              className="p-1 bg-red-600 text-white rounded hover:bg-red-700"
-                            >
-                              <X size={12} />
-                            </button>
-                          </div>
-                        </div>
-                        {formData.mainImage === imageUrl && (
-                          <div className="absolute top-1 left-1 bg-red-600 text-white text-xs px-2 py-1 rounded">
-                            Main
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
+              <div className="relative">
+                <LinkIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                <input
+                  type="text"
+                  name="url"
+                  value={formData.url}
+                  onChange={handleInputChange}
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200"
+                  placeholder="https://example.com"
+                  required
+                />
               </div>
             </div>
+
+            {/* Project Image */}
+            {/* Project Images */}
+<div className="bg-white p-4 rounded-lg shadow border border-gray-200">
+  <label className="block text-sm font-medium text-gray-700 mb-2">
+    Project Images *
+  </label>
+
+  <div className="flex items-center justify-center w-full">
+    <label
+      htmlFor="file-upload"
+      className="cursor-pointer flex flex-col items-center justify-center border-2 border-dashed border-red-500 rounded-lg p-6 w-full hover:bg-red-50 transition-all duration-200"
+    >
+      <Plus  color='red' size={34} className='font-bold'></Plus>
+      <span className="text-red-500 font-medium">Click to add images</span>
+      <input
+        id="file-upload"
+        type="file"
+        multiple
+        accept="image/*"
+        onChange={handleImageChange}
+        className="hidden"
+      />
+    </label>
+  </div>
+
+  {formData.images.length > 0 && (
+    <div className="mt-4 flex flex-wrap gap-3">
+      {formData.images.map((img, i) => (
+        <div key={i} className="relative w-24 h-24">
+          <img
+            src={img}
+            alt={`preview-${i}`}
+            className="w-full h-full object-cover rounded-lg border border-gray-200"
+          />
+          <button
+            type="button"
+            onClick={() =>
+              setFormData((prev) => ({
+                ...prev,
+                images: prev.images.filter((_, index) => index !== i),
+              }))
+            }
+            className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600 transition"
+          >
+            &times;
+          </button>
+        </div>
+      ))}
+    </div>
+  )}
+</div>
 
             {/* Description */}
             <div>
@@ -237,29 +271,190 @@ export const AddEvent: React.FC = () => {
                 name="description"
                 value={formData.description}
                 onChange={handleInputChange}
-                rows={5}
+                rows={4}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200"
-                placeholder="Describe the event, your role, and key highlights..."
+                placeholder="Describe the project and its features..."
                 required
               />
             </div>
+<div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Event Location *
+              </label>
+              <input
+                  type="text"
+                  name="location"
+                  value={formData.location}
+                  onChange={handleInputChange}
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200"
+                  placeholder="location"
+                  required
+                />
+            </div>
+            {/* Technologies */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                Select Category *
+              </label>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {eventCategories.map((event) => (
+                  <button
+                    key={event}
+                    type="button"
+                     onClick={() =>
+      setFormData((prev) => ({ ...prev, category: event }))
+    }
+                    className={`flex items-center justify-center space-x-2 px-4 py-3 border-2 rounded-lg transition-all duration-200 ${
+                      formData.category===event
+                        ? 'border-red-500 bg-red-50 text-red-700'
+                        : 'border-gray-300 hover:border-red-300 hover:bg-red-50 text-gray-700'
+                    }`}
+                  >
+                    <Code size={16} />
+                    <span className="font-medium">{event}</span>
+                  </button>
 
+                ))}
+              </div>
+             {formData.category.length === 0 && (
+                <p className="text-red-500 text-sm mt-2">Please select a Category</p>
+              )} 
+            </div>
+               <h2 className="text-2xl font-semibold text-gray-900 mb-6">Client Details</h2>
+                <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Client Name*
+              </label>
+              <div className="relative">
+                <FileText className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                <input
+                  type="text"
+                  name="clientName"
+                  value={formData.clientName}
+                  onChange={handleInputChange}
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200"
+                  placeholder="Enter project title"
+                  required
+                />
+              </div>
+            </div>
+              <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Client Email*
+              </label>
+              <div className="relative">
+                <FileText className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                <input
+                  type="text"
+                  name="clientEmail"
+                  value={formData.clientEmail}
+                  onChange={handleInputChange}
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200"
+                  placeholder="Enter project title"
+                  required
+                />
+              </div>
+            </div>
+              <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Client Contact Number*
+              </label>
+              <div className="relative">
+                <FileText className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                <input
+                  type="text"
+                  name="clientPhone"
+                  value={formData.clientPhone}
+                  onChange={handleInputChange}
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200"
+                  placeholder="Enter project title"
+                  required
+                />
+              </div>
+            </div>
+              <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Total Budget*
+              </label>
+              <div className="relative">
+                <FileText className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                <input
+                  type="text"
+                  name="budget"
+                  value={formData.budget}
+                  onChange={handleInputChange}
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200"
+                  placeholder="Enter project title"
+                  required
+                />
+              </div>
+            </div>
+              <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Advance*
+              </label>
+              <div className="relative">
+                <FileText className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                <input
+                  type="number"
+                  name="advance"
+                  value={formData.advance}
+                  onChange={handleInputChange}
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200"
+                  placeholder="Enter project title"
+                  required
+                />
+              </div>
+            </div>
+              <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Advance Paid Date*
+              </label>
+              <div className="relative">
+                <FileText className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                <input
+  type="date"
+  name="advanceDate"
+  value={formData.advanceDate}
+  onChange={handleInputChange}
+  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200"
+  required
+/>
+              </div>
+            </div>
+            <div>
+  <label className="block text-sm font-medium text-gray-700 mb-2">
+    Publish project on website
+  </label>
+  <div className="flex items-center space-x-2">
+    <input
+      type="checkbox"
+      name="publish"
+      checked={formData.publish}  // bind to boolean
+      onChange={(e) =>
+        setFormData(prev => ({ ...prev, publish: e.target.checked }))
+      }
+      className="h-5 w-5 text-red-600 border-gray-300 rounded focus:ring-2 focus:ring-red-500"
+    />
+    <span className=" text-black font-bold text-md">Yes, publish this Event</span>
+  </div>
+</div>
             {/* Submit Button */}
             <div className="pt-6">
               <button
                 type="submit"
-                disabled={isSubmitting}
+                // disabled={isSubmitting || formData.technologies.length === 0}
                 className="w-full bg-red-600 text-white py-3 px-6 rounded-lg hover:bg-red-700 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
               >
                 {isSubmitting ? (
                   <>
                     <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                    <span>Adding Event...</span>
+                    <span>Adding Project...</span>
                   </>
                 ) : (
                   <>
-                    <Calendar size={20} />
-                    <span>Add Event</span>
+                    <Briefcase size={20} />
+                    <span>Add Web Project</span>
                   </>
                 )}
               </button>
@@ -267,28 +462,34 @@ export const AddEvent: React.FC = () => {
           </form>
         </div>
 
-        {/* Recent Events */}
-        {existingEvents.length > 0 && (
+        {/* Recent Projects
+        {existingProjects.length > 0 && (
           <div className="bg-white rounded-xl shadow-sm border border-red-100 p-6">
-            <h3 className="text-xl font-semibold text-gray-900 mb-4">Recent Events</h3>
+            <h3 className="text-xl font-semibold text-gray-900 mb-4">Recent Projects</h3>
             <div className="grid gap-4">
-              {existingEvents.slice(-3).reverse().map((event) => (
-                <div key={event.id} className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
+              {existingProjects.slice(-3).reverse().map((project) => (
+                <div key={project.id} className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
                   <img 
-                    src={event.mainImage || event.images[0]} 
-                    alt={event.name}
+                    src={project.image} 
+                    alt={project.title}
                     className="w-16 h-12 object-cover rounded-md"
                   />
                   <div className="flex-1">
-                    <h4 className="font-medium text-gray-900">{event.name}</h4>
-                    <p className="text-sm text-gray-600">{event.category} • {new Date(event.date).toLocaleDateString()}</p>
-                    <p className="text-xs text-gray-500 mt-1">{event.images.length} images</p>
+                    <h4 className="font-medium text-gray-900">{project.title}</h4>
+                    <p className="text-sm text-gray-600">{project.description.substring(0, 60)}...</p>
+                    <div className="flex space-x-2 mt-1">
+                      {project.technologies.map((tech) => (
+                        <span key={tech} className="inline-block px-2 py-1 bg-red-100 text-red-700 text-xs rounded-full">
+                          {tech}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
           </div>
-        )}
+        )} */}
       </div>
     </Layout>
   );

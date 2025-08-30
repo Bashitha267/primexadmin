@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '../types';
 import { storageUtils } from '../utils/storage';
 
@@ -33,7 +33,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = (username: string, password: string): boolean => {
     // Simple hardcoded credentials for demo
-    if (username === 'admin' && password === '1234') {
+    if (username === 'bashi26' && password === '1337'||username === 'primexstudio' && password === '@primexstudio0411') {
       const userData = { username: 'admin', isAuthenticated: true };
       setUser(userData);
       setIsAuthenticated(true);
